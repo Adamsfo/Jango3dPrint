@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export function Header() {
@@ -14,21 +13,26 @@ export function Header() {
   ] as const;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-        <Link to="/" className="flex items-center gap-2 font-display text-xl tracking-tight">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-accent/60 text-accent-foreground">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          JANGO<span className="text-muted-foreground">3D</span>
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/55 backdrop-blur-xl">
+      <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-6 px-6 py-4">
+        <Link to="/" className="group flex items-center hover-gold cinematic">
+          <div className="relative flex flex-col leading-none">
+            <span className="font-display text-xl tracking-[0.22em] text-foreground md:text-2xl">
+              JANGO
+            </span>
+            <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.32em] text-primary/90 md:text-[11px]">
+              3D PRINT
+            </span>
+            <span className="pointer-events-none absolute -inset-x-6 -inset-y-3 rounded-3xl bg-primary/8 blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+          </div>
         </Link>
 
-        <nav className="hidden items-center gap-8 text-sm md:flex">
+        <nav className="hidden items-center gap-10 text-sm md:flex">
           {links.map((l) => (
             <Link
               key={l.to}
               to={l.to}
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              className="text-muted-foreground cinematic hover:text-foreground"
               activeProps={{ className: "text-foreground" }}
               activeOptions={{ exact: l.to === "/" }}
             >
@@ -46,7 +50,7 @@ export function Header() {
 
               <button
                 onClick={() => signOut()}
-                className="rounded-full border border-border px-4 py-2 text-xs font-medium uppercase tracking-widest transition hover:bg-muted"
+                className="rounded-full border border-border/80 bg-card/30 px-4 py-2 text-xs font-medium uppercase tracking-widest cinematic hover:bg-card/60 hover:-translate-y-0.5"
               >
                 Sair
               </button>
@@ -55,14 +59,14 @@ export function Header() {
             <>
               <Link
                 to="/login"
-                className="rounded-full border border-border px-4 py-2 text-xs font-medium uppercase tracking-widest transition hover:bg-muted"
+                className="rounded-full border border-border/80 bg-card/30 px-4 py-2 text-xs font-medium uppercase tracking-widest cinematic hover:bg-card/60 hover:-translate-y-0.5"
               >
                 Login
               </Link>
 
               <Link
                 to="/login"
-                className="rounded-full bg-foreground px-5 py-2.5 text-xs font-medium uppercase tracking-widest text-background transition hover:bg-foreground/85"
+                className="rounded-full bg-primary px-5 py-2.5 text-xs font-medium uppercase tracking-widest text-primary-foreground shadow-glow cinematic hover:bg-primary/90 hover:-translate-y-0.5"
               >
                 Cadastre-se
               </Link>

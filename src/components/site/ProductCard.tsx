@@ -1,14 +1,23 @@
 import { Link } from "@tanstack/react-router";
-import { type Product, formatBRL } from "@/lib/products";
+import { formatBRL } from "@/lib/products";
 
-export function ProductCard({ product }: { product: Product }) {
+export type ProductCardProduct = {
+  slug: string;
+  name: string;
+  tagline: string;
+  basePrice: number;
+  category: string;
+  image: string;
+};
+
+export function ProductCard({ product }: { product: ProductCardProduct }) {
   return (
     <Link
       to="/produto/$slug"
       params={{ slug: product.slug }}
-      className="group block"
+      className="group block hover-gold cinematic"
     >
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-warm shadow-soft">
+      <div className="relative overflow-hidden rounded-3xl bg-card/40 shadow-soft glass cinematic group-hover:-translate-y-0.5 group-hover:shadow-glow">
         <div className="aspect-[4/5] w-full">
           <img
             src={product.image}
@@ -18,7 +27,7 @@ export function ProductCard({ product }: { product: Product }) {
           />
         </div>
         <div className="pointer-events-none absolute inset-x-6 bottom-6 flex items-end justify-between text-sm">
-          <span className="rounded-full bg-background/85 px-3 py-1 text-[11px] uppercase tracking-widest text-muted-foreground backdrop-blur">
+          <span className="rounded-full bg-background/20 px-3 py-1 text-[11px] uppercase tracking-widest text-muted-foreground backdrop-blur glass">
             {product.category}
           </span>
         </div>

@@ -3,14 +3,14 @@ import { Instagram, Mail, Sparkles } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="mt-32 border-t border-border/60 bg-cream">
+    <footer className="mt-32 border-t border-border/70 bg-background">
       <div className="mx-auto grid max-w-7xl gap-12 px-6 py-20 md:grid-cols-4">
         <div className="md:col-span-2">
           <Link to="/" className="flex items-center gap-2 font-display text-2xl">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-accent/60">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-accent/15 text-primary shadow-glow">
               <Sparkles className="h-4 w-4" />
             </span>
-            JANGO<span className="text-muted-foreground">3D</span>
+            JANGO<span className="text-primary">3D</span>
           </Link>
           <p className="mt-5 max-w-md text-pretty text-muted-foreground">
             Luminárias decorativas infantis feitas à mão com impressão 3D.
