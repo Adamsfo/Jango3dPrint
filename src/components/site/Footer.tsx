@@ -13,8 +13,8 @@ export function Footer() {
             JANGO<span className="text-primary">3D</span>
           </Link>
           <p className="mt-5 max-w-md text-pretty text-muted-foreground">
-            Luminárias decorativas infantis feitas à mão com impressão 3D.
-            Cada peça é pensada para iluminar com carinho os primeiros anos.
+            Luminárias decorativas feitas à mão com impressão 3D. Cada peça é pensada para iluminar
+            com carinho.
           </p>
         </div>
 
@@ -23,10 +23,26 @@ export function Footer() {
             Navegar
           </h4>
           <ul className="space-y-2 text-sm">
-            <li><Link to="/colecao" className="hover:text-foreground text-muted-foreground">Coleção</Link></li>
-            <li><Link to="/personalizar" className="hover:text-foreground text-muted-foreground">Personalizar</Link></li>
-            <li><Link to="/sobre" className="hover:text-foreground text-muted-foreground">Nossa história</Link></li>
-            <li><Link to="/contato" className="hover:text-foreground text-muted-foreground">Contato</Link></li>
+            <li>
+              <Link to="/colecao" className="hover:text-foreground text-muted-foreground">
+                Coleção
+              </Link>
+            </li>
+            <li>
+              <Link to="/personalizar" className="hover:text-foreground text-muted-foreground">
+                Personalizar
+              </Link>
+            </li>
+            <li>
+              <Link to="/sobre" className="hover:text-foreground text-muted-foreground">
+                Nossa história
+              </Link>
+            </li>
+            <li>
+              <Link to="/contato" className="hover:text-foreground text-muted-foreground">
+                Contato
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -35,8 +51,12 @@ export function Footer() {
             Contato
           </h4>
           <ul className="space-y-3 text-sm text-muted-foreground">
-            <li className="flex items-center gap-2"><Mail className="h-4 w-4" /> ola@jango3d.com.br</li>
-            <li className="flex items-center gap-2"><Instagram className="h-4 w-4" /> @jango3d</li>
+            <li className="flex items-center gap-2">
+              <Mail className="h-4 w-4" /> ola@jango3d.com.br
+            </li>
+            <li className="flex items-center gap-2">
+              <Instagram className="h-4 w-4" /> @jango3d
+            </li>
           </ul>
         </div>
       </div>

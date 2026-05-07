@@ -1,11 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Heart, Package, Palette, Play, Sparkles, Star } from "lucide-react";
+import { ArrowRight, Heart, Palette, Play, Sparkles, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
-import { ProductCard } from "@/components/site/ProductCard";
 import { supabase } from "@/lib/supabase";
-import process from "@/assets/process.jpg";
 
 interface Product {
   id: string;
@@ -41,6 +39,9 @@ const parseMoney = (value: unknown) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const formatBRL = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
 const mapProduct = (row: any): Product => ({
   id: typeof row?.id === "string" ? row.id : "",
   name: typeof row?.name === "string" ? row.name : "",
@@ -61,11 +62,12 @@ const mapProduct = (row: any): Product => ({
     typeof row?.customization_max_chars === "number" && Number.isFinite(row.customization_max_chars)
       ? row.customization_max_chars
       : 12,
-  principal_home: Boolean(row?.principal_home),
+  principal_home: row?.principal_home === true,
   gallery: Array.isArray(row?.gallery)
     ? row.gallery.filter((url: unknown): url is string => typeof url === "string" && url.length > 0)
     : undefined,
-  video_url: typeof row?.video_url === "string" && row.video_url.length > 0 ? row.video_url : undefined,
+  video_url:
+    typeof row?.video_url === "string" && row.video_url.length > 0 ? row.video_url : undefined,
 });
 
 const mapVariant = (row: any): ProductVariant => ({
@@ -94,7 +96,8 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
+  const [processImages, setProcessImages] = useState<string[]>([]);
   const [heroProducts, setHeroProducts] = useState<Product[]>([]);
   const [isLoadingHero, setIsLoadingHero] = useState(true);
 
@@ -116,28 +119,59 @@ function Index() {
 
     for (const n of nodes) io.observe(n);
     return () => io.disconnect();
+  }, [heroProducts.length, featuredProducts.length, isLoadingHero, isLoadingFeatured]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function run() {
+      setIsLoadingFeatured(true);
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("featured", true)
+        .limit(12);
+
+      if (!isMounted) return;
+
+      const products =
+        !error && data ? data.map(mapProduct).filter((p) => Boolean(p.id && p.slug && p.name)) : [];
+
+      setFeaturedProducts(products);
+      setIsLoadingFeatured(false);
+    }
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
     let isMounted = true;
 
     async function run() {
-      setIsLoadingProducts(true);
-
       const { data, error } = await supabase
         .from("products")
-        .select(
-          "id,name,slug,description,price,image,category,stock,featured,customizable,customization_label,customization_price,customization_max_chars,principal_home,gallery,video_url",
-        )
-        .eq("featured", true)
-        .limit(20);
+        .select("image")
+        .not("image", "is", null)
+        .limit(12);
 
       if (!isMounted) return;
 
-      const featured = !error && data ? data.map(mapProduct) : [];
+      const images =
+        !error && data
+          ? Array.from(
+              new Set(
+                data
+                  .map((row: any) => (typeof row?.image === "string" ? row.image : ""))
+                  .filter(Boolean),
+              ),
+            )
+          : [];
 
-      setFeaturedProducts(featured.filter((p) => Boolean(p.slug && p.name)));
-      setIsLoadingProducts(false);
+      setProcessImages(images);
     }
 
     void run();
@@ -153,12 +187,12 @@ function Index() {
       setIsLoadingHero(true);
       const { data, error } = await supabase
         .from("products")
-        .select(
-          "id,name,slug,description,price,image,category,stock,featured,customizable,customization_label,customization_price,customization_max_chars,principal_home,gallery,video_url",
-        )
+        .select("*")
         .eq("principal_home", true);
 
       if (!isMounted) return;
+
+      console.log("HOME PRODUCTS", data);
 
       if (error || !data || data.length === 0) {
         setHeroProducts([]);
@@ -166,7 +200,11 @@ function Index() {
         return;
       }
 
-      setHeroProducts(data.map(mapProduct).filter((p) => Boolean(p.id && p.slug && p.name)));
+      setHeroProducts(
+        data
+          .map(mapProduct)
+          .filter((p) => Boolean(p.id && p.slug && p.name && p.principal_home === true)),
+      );
       setIsLoadingHero(false);
     }
 
@@ -176,52 +214,79 @@ function Index() {
     };
   }, []);
 
+  const homeProducts = heroProducts.filter((p) => p.principal_home === true);
+
   return (
     <div className="min-h-screen">
       <Header />
-      <Hero
-        isLoading={isLoadingHero}
-        heroProducts={heroProducts}
-      />
+      {isLoadingHero ? (
+        <HeroLoading />
+      ) : homeProducts?.length ? (
+        homeProducts.map((product) => (
+          <div key={product.id}>
+            <Hero product={product} />
+          </div>
+        ))
+      ) : (
+        <HeroEmptyState />
+      )}
       <Trust />
-      <Featured products={featuredProducts} isLoading={isLoadingProducts} />
-      <Personalize />
-      <Process />
+      <Featured products={featuredProducts} isLoading={isLoadingFeatured} />
+      {/* <Personalize /> */}
+      <Process images={processImages} />
       <Testimonials />
-      <Cta />
+      {/* <Cta /> */}
       <Footer />
     </div>
   );
 }
 
-function Hero({
-  isLoading,
-  heroProducts,
-}: {
-  isLoading: boolean;
-  heroProducts: Product[];
-}) {
+function HeroLoading() {
+  return (
+    <section className="relative overflow-hidden depth-section reveal" data-reveal>
+      <div className="mx-auto grid max-w-7xl gap-10 px-6 pt-12 pb-24 md:grid-cols-2 md:items-center md:pt-20">
+        <div className="space-y-5">
+          <div className="h-8 w-56 rounded-full shimmer" />
+          <div className="h-20 max-w-xl rounded-3xl shimmer" />
+          <div className="h-28 max-w-lg rounded-3xl shimmer" />
+        </div>
+        <div className="aspect-[4/5] rounded-[2rem] shimmer md:aspect-[5/6]" />
+      </div>
+    </section>
+  );
+}
+
+function HeroEmptyState() {
+  return (
+    <section className="relative overflow-hidden depth-section reveal" data-reveal>
+      <div className="mx-auto max-w-7xl px-6 py-24">
+        <div className="rounded-[2rem] border border-border/70 bg-card/30 p-10 text-center glass">
+          <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+            Produto em destaque
+          </p>
+          <h1 className="mt-4 font-display text-4xl text-balance md:text-5xl">
+            Em breve, uma luminária especial por aqui.
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+            Cadastre um produto com principal_home ativo no Supabase para montar esta seção
+            automaticamente.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Hero({ product }: { product: Product }) {
   const [customName, setCustomName] = useState("");
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [isLoadingVariants, setIsLoadingVariants] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedMedia, setSelectedMedia] = useState<string>("");
   const [showVideo, setShowVideo] = useState(false);
 
-  useEffect(() => {
-    if (!heroProducts.length) {
-      if (selectedProductId) setSelectedProductId("");
-      return;
-    }
-
-    if (!selectedProductId || !heroProducts.some((p) => p.id === selectedProductId)) {
-      setSelectedProductId(heroProducts[0].id);
-    }
-  }, [heroProducts, selectedProductId]);
-
-  const selected = heroProducts.find((p) => p.id === selectedProductId) ?? heroProducts[0] ?? null;
+  const selected = product;
   const maxCustomizationChars = selected?.customization_max_chars ?? 12;
 
   useEffect(() => {
@@ -278,14 +343,20 @@ function Hero({
   }, [selected?.id]);
 
   const colors = Array.from(new Set(variants.map((v) => v.color)));
-  const sizes = Array.from(new Set(variants.filter((v) => v.color === selectedColor).map((v) => v.size)));
+  const sizes = Array.from(
+    new Set(variants.filter((v) => v.color === selectedColor).map((v) => v.size)),
+  );
   const currentVariant =
     variants.find((v) => v.color === selectedColor && v.size === selectedSize) ??
     variants.find((v) => v.color === selectedColor) ??
     variants[0];
   const variantImage = currentVariant?.image;
   const productImage = selected?.image ?? "";
-  const productGallery = selected?.gallery?.length ? selected.gallery : productImage ? [productImage] : [];
+  const productGallery = selected?.gallery?.length
+    ? selected.gallery
+    : productImage
+      ? [productImage]
+      : [];
   const galleryImages = Array.from(
     new Set([...(variantImage ? [variantImage] : []), ...productGallery].filter(Boolean)),
   );
@@ -294,7 +365,6 @@ function Hero({
     selected?.customizable && customName.trim().length > 0 ? selected.customization_price : 0;
   const price = (currentVariant?.price ?? selected?.price ?? 0) + customizationPrice;
   const availability = currentVariant ? currentVariant.stock > 0 : (selected?.stock ?? 0) > 0;
-  const showProductSelector = heroProducts.length > 1;
   const videoUrl = selected?.video_url;
   const isDirectVideo = /\.(mp4|webm|ogg)(\?.*)?$/i.test(videoUrl ?? "");
 
@@ -306,14 +376,14 @@ function Hero({
   return (
     <section className="relative overflow-hidden depth-section reveal" data-reveal>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_55%_at_20%_10%,color-mix(in_oklch,var(--color-primary)_18%,transparent)_0%,transparent_60%),radial-gradient(55%_45%_at_80%_35%,color-mix(in_oklch,var(--color-primary)_10%,transparent)_0%,transparent_65%)]" />
-      <div className="mx-auto grid max-w-7xl gap-10 px-6 pt-12 pb-24 md:grid-cols-2 md:items-center md:pt-20">
+      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-24 md:grid-cols-2 md:items-center md:pt-20">
         <div className="animate-fade-up">
           <span className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/40 px-4 py-1.5 text-xs uppercase tracking-widest text-muted-foreground backdrop-blur glass">
             <Sparkles className="h-3.5 w-3.5" /> Configurador · Edição artesanal
           </span>
 
           <h1 className="mt-6 font-display text-5xl leading-[1.05] text-balance md:text-6xl lg:text-7xl">
-            {isLoading ? "Carregando destaque..." : selected?.name ?? "Produto em destaque em breve"}
+            {selected.name}
           </h1>
 
           <p className="mt-5 max-w-md text-pretty text-base text-muted-foreground md:text-lg">
@@ -323,39 +393,6 @@ function Hero({
           </p>
 
           <div className="mt-8 grid gap-4 rounded-3xl border border-border/70 bg-card/30 p-5 backdrop-blur glass">
-            {showProductSelector ? (
-              <div className="space-y-3">
-                <span className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                  Modelo principal
-                </span>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {heroProducts.map((product) => {
-                    const active = product.id === selected?.id;
-
-                    return (
-                      <button
-                        key={product.id}
-                        type="button"
-                        onClick={() => setSelectedProductId(product.id)}
-                        className={`rounded-2xl border p-4 text-left cinematic hover:-translate-y-0.5 ${
-                          active
-                            ? "border-primary/70 bg-primary/10 shadow-glow"
-                            : "border-border/70 bg-background/20 hover:bg-card/50"
-                        }`}
-                      >
-                        <span className="block font-display text-lg text-foreground">
-                          {product.name}
-                        </span>
-                        <span className="mt-1 block text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                          {product.category}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
             {selected?.customizable ? (
               <div className="grid gap-3">
                 <label className="space-y-2">
@@ -400,12 +437,18 @@ function Hero({
                           type="button"
                           onClick={() => {
                             setSelectedColor(c);
-                            const nextSizes = variants.filter((v) => v.color === c).map((v) => v.size);
-                            const next = nextSizes.includes(selectedSize) ? selectedSize : nextSizes[0] ?? "";
+                            const nextSizes = variants
+                              .filter((v) => v.color === c)
+                              .map((v) => v.size);
+                            const next = nextSizes.includes(selectedSize)
+                              ? selectedSize
+                              : (nextSizes[0] ?? "");
                             setSelectedSize(next);
                           }}
                           className={`rounded-full border cinematic ${
-                            active ? "border-primary shadow-glow" : "border-border/70 hover:border-primary/50"
+                            active
+                              ? "border-primary shadow-glow"
+                              : "border-border/70 hover:border-primary/50"
                           } ${isHex ? "h-9 w-9" : "px-4 py-2 text-xs font-medium uppercase tracking-widest"}`}
                           style={isHex ? { backgroundColor: c } : undefined}
                         >
@@ -491,12 +534,12 @@ function Hero({
           <div
             className="glow-aura lamp-glow relative overflow-hidden rounded-[2rem] shadow-soft hover-gold cinematic"
             style={{
-              ["--lamp-color" as any]: /^#/.test(selectedColor) ? selectedColor : "var(--color-primary)",
+              ["--lamp-color" as any]: /^#/.test(selectedColor)
+                ? selectedColor
+                : "var(--color-primary)",
             }}
           >
-            {isLoading ? (
-              <div className="aspect-[4/5] w-full md:aspect-[5/6] shimmer opacity-60" />
-            ) : showVideo && videoUrl ? (
+            {showVideo && videoUrl ? (
               <div className="aspect-[4/5] w-full bg-background/80 md:aspect-[5/6]">
                 {isDirectVideo ? (
                   <video
@@ -583,7 +626,9 @@ function Hero({
                       setShowVideo(false);
                     }}
                     className={`h-20 w-20 shrink-0 overflow-hidden rounded-2xl border bg-card/30 cinematic hover:-translate-y-0.5 ${
-                      active ? "border-primary/70 shadow-glow" : "border-border/70 hover:border-primary/50"
+                      active
+                        ? "border-primary/70 shadow-glow"
+                        : "border-border/70 hover:border-primary/50"
                     }`}
                     aria-label={`Imagem ${index + 1}`}
                   >
@@ -596,7 +641,9 @@ function Hero({
                   type="button"
                   onClick={() => setShowVideo(true)}
                   className={`grid h-20 w-20 shrink-0 place-items-center rounded-2xl border bg-card/30 cinematic hover:-translate-y-0.5 ${
-                    showVideo ? "border-primary/70 shadow-glow" : "border-border/70 hover:border-primary/50"
+                    showVideo
+                      ? "border-primary/70 shadow-glow"
+                      : "border-border/70 hover:border-primary/50"
                   }`}
                   aria-label="Abrir vídeo"
                 >
@@ -617,12 +664,11 @@ function Trust() {
   const items = [
     { icon: Heart, label: "Feito à mão com carinho" },
     { icon: Palette, label: "Personalização exclusiva" },
-    { icon: Package, label: "Embalagem presente" },
     { icon: Sparkles, label: "Luz LED quente e segura" },
   ];
   return (
     <section className="border-y border-border/70 bg-background reveal" data-reveal>
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-6 py-10 md:grid-cols-4">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 py-10 sm:grid-cols-3">
         {items.map((it) => (
           <div key={it.label} className="flex items-center gap-3 text-sm">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-card/50 shadow-soft cinematic hover:-translate-y-0.5 hover:shadow-glow">
@@ -637,54 +683,66 @@ function Trust() {
 }
 
 function Featured({ products, isLoading }: { products: Product[]; isLoading: boolean }) {
-
   return (
-    <section className="mx-auto max-w-7xl px-6 py-24 reveal" data-reveal>
+    <section className="mx-auto max-w-7xl px-6 py-20 reveal" data-reveal>
       <div className="flex items-end justify-between gap-6">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            Coleção em destaque
+          <h2 className="font-display text-4xl md:text-5xl">Produtos em destaque</h2>
+          <p className="mt-4 max-w-xl text-muted-foreground">
+            Peças selecionadas para configurar com acabamento premium e luz sob medida.
           </p>
-          <h2 className="mt-2 font-display text-4xl md:text-5xl">Iluminando soninhos</h2>
         </div>
         <Link
           to="/colecao"
-          className="hidden text-sm text-muted-foreground hover:text-foreground md:inline-flex"
+          className="hidden rounded-full border border-border/70 bg-card/30 px-5 py-2.5 text-sm font-medium glass cinematic hover:bg-card/60 md:inline-flex"
         >
-          Ver tudo →
+          Ver coleção
         </Link>
       </div>
-      <div className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+
+      <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading
-          ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-warm shadow-soft">
-                  <div className="aspect-[4/5] w-full bg-foreground/5" />
-                </div>
-                <div className="mt-5 flex items-start justify-between gap-4">
-                  <div className="space-y-2">
-                    <div className="h-5 w-44 rounded bg-foreground/5" />
-                    <div className="h-4 w-56 rounded bg-foreground/5" />
-                  </div>
-                  <div className="space-y-2 text-right">
-                    <div className="h-3 w-16 rounded bg-foreground/5" />
-                    <div className="h-5 w-20 rounded bg-foreground/5" />
-                  </div>
-                </div>
+          ? Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-3xl border border-border/70 bg-card/30 p-4 glass">
+                <div className="aspect-[4/5] rounded-2xl shimmer" />
+                <div className="mt-5 h-6 w-2/3 rounded-full shimmer" />
+                <div className="mt-3 h-4 w-1/2 rounded-full shimmer" />
               </div>
             ))
-          : products.map((p) => (
-              <ProductCard
-                key={p.slug}
-                product={{
-                  slug: p.slug,
-                  name: p.name,
-                  tagline: "",
-                  basePrice: p.price,
-                  category: p.category,
-                  image: p.image,
-                }}
-              />
+          : products.map((product) => (
+              <Link
+                key={product.id}
+                to="/produto/$slug"
+                params={{ slug: product.slug }}
+                className="group block rounded-3xl border border-border/70 bg-card/30 p-4 glass cinematic hover:-translate-y-1 hover:border-primary/50 hover:shadow-glow"
+              >
+                <div className="overflow-hidden rounded-2xl bg-background/30">
+                  {product.image ? (
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      loading="lazy"
+                      className="aspect-[4/5] w-full object-cover cinematic group-hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <div className="grid aspect-[4/5] place-items-center px-6 text-center text-sm text-muted-foreground">
+                      Imagem indisponível
+                    </div>
+                  )}
+                </div>
+                <div className="mt-5 flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-display text-xl">{product.name}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{product.description}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                      A partir de
+                    </p>
+                    <p className="mt-1 font-display text-lg">{formatBRL(product.price)}</p>
+                  </div>
+                </div>
+              </Link>
             ))}
       </div>
     </section>
@@ -734,30 +792,74 @@ function Personalize() {
   );
 }
 
-function Process() {
+function Process({ images }: { images: string[] }) {
+  const [activeIndex, setActiveIndex] = useState(0);
   const steps = [
-    { n: "01", t: "Você escolhe", d: "Modelo, cor e personalização" },
-    { n: "02", t: "Imprimimos à mão", d: "Camadas finas e acabamento artesanal" },
-    { n: "03", t: "Embalamos com carinho", d: "Caixa presente pronta para entregar" },
-    { n: "04", t: "Chega em casa", d: "Frete calculado e rastreio em tempo real" },
+    { n: "01", t: "Escolha sua peça", d: "Modelo, cor, tamanho e personalização do seu jeito." },
+    {
+      n: "02",
+      t: "Produção em detalhes",
+      d: "Impressão 3D precisa, camada por camada, com acabamento refinado e atenção aos mínimos detalhes.",
+    },
+    {
+      n: "03",
+      t: "Finalização premium",
+      d: "Testes de iluminação, revisão manual e preparação cuidadosa para garantir uma experiência impecável.",
+    },
+    {
+      n: "04",
+      t: "Entrega rastreada",
+      d: "Acompanhamento completo até sua luminária chegar à sua casa com segurança.",
+    },
   ];
+  const carouselImages = Array.from(new Set(images.filter(Boolean)));
+
+  useEffect(() => {
+    if (carouselImages.length <= 1) return;
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((index) => (index + 1) % carouselImages.length);
+    }, 4200);
+
+    return () => window.clearInterval(timer);
+  }, [carouselImages.length]);
+
+  useEffect(() => {
+    if (activeIndex >= carouselImages.length) setActiveIndex(0);
+  }, [activeIndex, carouselImages.length]);
+
   return (
-    <section className="mx-auto max-w-7xl px-6 py-24 reveal" data-reveal>
+    <section className="mx-auto max-w-7xl px-6 py-20 reveal" data-reveal>
       <div className="grid gap-12 md:grid-cols-2 md:items-center">
         <div className="overflow-hidden rounded-[2rem] shadow-soft hover-gold cinematic">
-          <img
-            src={process}
-            alt="Processo artesanal de impressão 3D"
-            loading="lazy"
-            className="h-full w-full object-cover"
-          />
+          <div className="relative aspect-[4/5] bg-card/30 md:aspect-[5/6]">
+            {carouselImages.length ? (
+              carouselImages.map((image, index) => (
+                <img
+                  key={`${image}-${index}`}
+                  src={image}
+                  alt="Produto JANGO3D em destaque"
+                  loading="lazy"
+                  className={`absolute inset-0 h-full w-full object-cover cinematic ${
+                    index === activeIndex ? "opacity-100 scale-100" : "opacity-0 scale-[1.02]"
+                  }`}
+                />
+              ))
+            ) : (
+              <div className="grid h-full place-items-center px-8 text-center text-sm text-muted-foreground">
+                Imagens dos produtos aparecerão aqui assim que forem cadastradas.
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+          </div>
         </div>
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">O processo</p>
-          <h2 className="mt-3 font-display text-4xl md:text-5xl">Cada peça tem uma história.</h2>
-          <p className="mt-5 max-w-md text-muted-foreground">
-            Não trabalhamos com estoque. Tudo é impresso sob encomenda, camada por camada, para que
-            cada luminária chegue até você como uma pequena obra de arte.
+          <h2 className="mt-3 font-display text-4xl md:text-5xl">Feita especialmente para você.</h2>
+          <p className="mt-5 max-w-xl text-muted-foreground">
+            Cada luminária nasce da combinação entre tecnologia, personalização e acabamento
+            artesanal. Desenvolvemos nossos próprios designs exclusivos para criar peças únicas que
+            transformam ambientes, presentes e momentos especiais em algo memorável.
           </p>
           <ol className="mt-10 space-y-6">
             {steps.map((s) => (
@@ -779,16 +881,20 @@ function Process() {
 function Testimonials() {
   const reviews = [
     {
-      n: "Camila R.",
-      c: "A Lua Cheia transformou as noites da minha filha. A luz é mágica, parece um abraço.",
+      n: "Ana Clara M.",
+      c: "Personalizamos com o nome da nossa filha e o resultado ficou impecável. A luz é suave, o acabamento é muito refinado e virou o detalhe mais especial do quarto.",
     },
     {
-      n: "Bruno & Ana",
-      c: "Personalizamos com o nome da Helena. Chegou impecável, embalagem linda. Vale cada centavo.",
+      n: "Marcos & Júlia",
+      c: "Compramos para presentear e foi uma experiência premium do início ao fim. O design exclusivo chamou atenção imediatamente e a iluminação deixou tudo mais elegante.",
     },
     {
-      n: "Marina S.",
-      c: "Atendimento incrível e produto premium. Já é o terceiro que compro de presente.",
+      n: "Beatriz L.",
+      c: "A peça tem presença de objeto de decoração, não só luminária. Dá para perceber o cuidado no acabamento, na personalização e na forma como a luz valoriza o ambiente.",
+    },
+    {
+      n: "Rafael P.",
+      c: "Escolhi cor, tamanho e personalização para combinar com o escritório. Ficou moderno, sofisticado e com uma luz extremamente agradável para uso diário.",
     },
   ];
   return (
@@ -796,22 +902,24 @@ function Testimonials() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            Famílias JANGO3D
+            Família JANGO3D
           </p>
           <h2 className="mt-3 font-display text-4xl md:text-5xl">Histórias que iluminam.</h2>
         </div>
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
+        <div className="mt-14 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 md:grid md:snap-none md:grid-cols-4 md:overflow-visible md:pb-0">
           {reviews.map((r) => (
             <figure
               key={r.n}
-              className="rounded-3xl border border-border/70 bg-card/40 p-8 shadow-soft glass hover-gold cinematic hover:-translate-y-0.5 hover:shadow-glow"
+              className="min-w-[82%] snap-center rounded-3xl border border-border/70 bg-card/40 p-7 shadow-soft glass hover-gold cinematic hover:-translate-y-1 hover:border-primary/40 hover:shadow-glow sm:min-w-[48%] md:min-w-0"
             >
               <div className="flex gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} className="h-4 w-4 fill-accent text-accent" />
                 ))}
               </div>
-              <blockquote className="mt-5 text-pretty text-lg leading-relaxed">"{r.c}"</blockquote>
+              <blockquote className="mt-5 text-pretty text-base leading-relaxed text-foreground/90">
+                "{r.c}"
+              </blockquote>
               <figcaption className="mt-6 text-sm text-muted-foreground">— {r.n}</figcaption>
             </figure>
           ))}
