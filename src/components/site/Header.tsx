@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/context/AuthContext";
+import logo from "@/assets/logo.png";
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -13,18 +14,15 @@ export function Header() {
   ] as const;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/55 backdrop-blur-xl">
-      <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-6 px-6 py-4">
-        <Link to="/" className="group flex items-center hover-gold cinematic">
-          <div className="relative flex flex-col leading-none">
-            <span className="font-display text-xl tracking-[0.22em] text-foreground md:text-2xl">
-              JANGO
-            </span>
-            <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.32em] text-primary/90 md:text-[11px]">
-              3D PRINT
-            </span>
-            <span className="pointer-events-none absolute -inset-x-6 -inset-y-3 rounded-3xl bg-primary/8 blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-          </div>
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/65 shadow-[0_18px_60px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+      <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-6 px-6 py-3">
+        <Link to="/" className="group relative flex items-center hover-gold cinematic">
+          <span className="pointer-events-none absolute left-1/2 top-1/2 h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,190,80,.20)_0%,rgba(255,190,80,.10)_28%,rgba(255,190,80,.04)_45%,transparent_70%)] blur-[18px] transition-opacity duration-700 group-hover:opacity-100" />
+          <img
+            src={logo}
+            alt="JANGO 3D Print"
+            className="relative z-10 h-14 w-auto object-contain transition-all duration-500 [filter:brightness(1.18)_contrast(1.25)_drop-shadow(0_0_10px_rgba(255,190,80,.35))_drop-shadow(0_0_24px_rgba(255,190,80,.18))] group-hover:scale-[1.03] group-hover:[filter:brightness(1.22)_contrast(1.28)_drop-shadow(0_0_14px_rgba(255,190,80,.42))_drop-shadow(0_0_32px_rgba(255,190,80,.24))] md:h-[88px]"
+          />
         </Link>
 
         <nav className="hidden items-center gap-10 text-sm md:flex">
@@ -32,8 +30,11 @@ export function Header() {
             <Link
               key={l.to}
               to={l.to}
-              className="text-muted-foreground cinematic hover:text-foreground"
-              activeProps={{ className: "text-foreground" }}
+              className="relative inline-flex items-center text-muted-foreground transition-all duration-[280ms] ease-out after:absolute after:-bottom-2 after:left-0 after:h-px after:w-0 after:bg-[linear-gradient(90deg,transparent,rgba(255,190,80,.95),transparent)] after:transition-all after:duration-[280ms] after:ease-out hover:-translate-y-px hover:text-[#ffbf5e] hover:[text-shadow:0_0_8px_rgba(255,190,80,.45),0_0_18px_rgba(255,190,80,.22)] hover:after:w-full"
+              activeProps={{
+                className:
+                  "text-[#ffbf5e] [text-shadow:0_0_8px_rgba(255,190,80,.35),0_0_18px_rgba(255,190,80,.18)] after:w-full",
+              }}
               activeOptions={{ exact: l.to === "/" }}
             >
               {l.label}

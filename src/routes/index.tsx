@@ -3,6 +3,7 @@ import { ArrowRight, Heart, Palette, Play, Sparkles, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
+import { HeroCarousel } from "@/components/site/HeroCarousel";
 import { supabase } from "@/lib/supabase";
 
 interface Product {
@@ -219,6 +220,7 @@ function Index() {
   return (
     <div className="min-h-screen">
       <Header />
+      <HeroCarousel />
       {isLoadingHero ? (
         <HeroLoading />
       ) : homeProducts?.length ? (
