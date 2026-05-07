@@ -1,0 +1,343 @@
+Crie um site profissional, moderno, elegante e emocional para minha marca de luminárias decorativas infantis feitas em impressão 3D chamada JANGO3D.
+
+O estilo visual do site deve ser:
+
+* Minimalista
+* Premium
+* Aconchegante
+* Moderno
+* Inspirado em decoração Montessori e escandinava
+* Tons suaves (bege, branco, areia, cinza claro, madeira clara)
+* Luzes quentes e suaves
+* Muito foco em experiência visual e emoção
+
+O site deve transmitir:
+
+* carinho
+* aconchego
+* exclusividade
+* decoração premium infantil
+* personalização artesanal
+
+Tecnologias desejadas:
+
+* Frontend moderno e responsivo
+* Backend completo
+* Banco de dados
+* Painel administrativo
+* Integração Mercado Pago
+* Cálculo de frete
+* Sistema de acompanhamento de pedidos
+* SEO otimizado
+* Performance rápida
+* Estrutura pronta para crescer futuramente
+
+O projeto deve ser extremamente profissional e escalável.
+
+========================
+FUNCIONALIDADES DO SITE
+=======================
+
+# HOME PAGE
+
+Criar uma homepage premium contendo:
+
+* Banner principal emocional
+* Fotos grandes das luminárias
+* Ambiente de quarto infantil elegante
+* Frases emocionais
+* Produtos em destaque
+* Sessão “Personalize sua luminária”
+* Sessão de categorias
+* Sessão de avaliações de clientes
+* Sessão mostrando o processo artesanal
+* Sessão “como funciona”
+* Sessão Instagram/Galeria
+* Rodapé completo
+
+Adicionar animações suaves e modernas.
+
+========================
+CATÁLOGO DE PRODUTOS
+====================
+
+Cada luminária deve possuir:
+
+* Nome
+* Descrição
+* História/conceito emocional
+* Fotos múltiplas
+* Fotos por cor
+* Fotos por tamanho
+* Vídeos
+* Categoria
+* Preço base
+* Variações de preço
+* Controle de estoque
+* SKU
+* Peso
+* Dimensões
+* Tempo estimado de fabricação
+
+========================
+PERSONALIZAÇÃO
+==============
+
+O usuário deve conseguir personalizar luminárias.
+
+Exemplos:
+
+* Nome
+* Escolha da iluminação
+* Escolha cor da base
+* Escolha cor da cupula
+* Escolha da alimentação (USB ou tomada)
+
+O sistema deve:
+
+* Atualizar o preço automaticamente
+* Mostrar preview da personalização
+* Validar limite de caracteres
+* Calcular prazo adicional para itens personalizados
+
+========================
+VARIAÇÕES DE PRODUTO
+====================
+
+Cada produto deve possuir:
+
+* Cores diferentes
+* Tamanhos diferentes
+* Materiais diferentes
+* Intensidade de luz
+* Modelos de base
+
+Cada combinação altera:
+
+* Fotos
+* Valor
+* Prazo
+* Estoque
+
+========================
+LOGIN E CADASTRO
+================
+
+Criar sistema completo de:
+
+* Cadastro de usuário
+* Login
+* Recuperação de senha
+* Login social Google
+* Perfil do usuário
+* Histórico de pedidos
+* Favoritos
+* Endereços salvos
+
+========================
+PAINEL ADMINISTRATIVO
+=====================
+
+Criar painel administrativo completo com:
+
+# Gestão de produtos
+
+* Cadastro
+* Edição
+* Exclusão
+* Upload de fotos
+* Upload de vídeos
+* Cadastro de variações
+* Controle de estoque
+
+# Gestão de pedidos
+
+* Visualizar pedidos
+* Alterar status
+* Adicionar código de rastreio
+* Atualizar etapas
+
+# Gestão de clientes
+
+* Histórico
+* Pedidos
+* Contato
+
+# Gestão financeira
+
+* Relatórios
+* Faturamento
+* Produtos mais vendidos
+* Ticket médio
+
+========================
+STATUS DO PEDIDO
+================
+
+O cliente deve acompanhar em tempo real:
+
+* Pedido recebido
+* Pagamento aprovado
+* Em fabricação
+* Impressão 3D em andamento
+* Acabamento
+* Embalagem
+* Enviado
+* Em transporte
+* Entregue
+
+Criar timeline visual bonita e moderna.
+
+O administrador deve conseguir atualizar facilmente os status.
+
+========================
+FRETE
+=====
+
+Implementar:
+
+* Correios
+* Melhor Envio
+* Jadlog
+* Cálculo automático
+* Prazo automático
+* Rastreamento
+
+========================
+PAGAMENTO
+=========
+
+Integrar:
+
+* Mercado Pago
+* PIX
+* Cartão
+* Parcelamento
+* Boleto
+
+Implementar:
+
+* Webhooks
+* Confirmação automática
+* Segurança antifraude
+
+========================
+EXPERIÊNCIA PREMIUM
+===================
+
+Adicionar:
+
+* Modo escuro suave
+* Animações elegantes
+* Efeito glow nas luminárias
+* Simulação da luz acesa
+* Zoom nas imagens
+* Carrossel premium
+* Wishlist
+* Produtos relacionados
+* Kits de decoração
+* Produtos recomendados
+
+========================
+IDEIAS DIFERENCIADAS
+====================
+
+Adicionar também:
+
+# Simulador de ambiente
+
+Permitir visualizar a luminária em um quarto infantil.
+
+# Preview da iluminação
+
+Mostrar como a luz fica:
+
+* apagada
+* suave
+* média
+* forte
+
+# Calculadora inteligente
+
+Calcular automaticamente:
+
+* prazo de fabricação
+* prazo de entrega
+* custo de envio
+
+# Área de avaliações
+
+Usuários podem:
+
+* enviar fotos
+* avaliar
+* comentar
+
+# Sistema de cupons
+
+* desconto
+* frete grátis
+* campanhas
+
+# Blog
+
+Criar blog para SEO:
+
+* decoração infantil
+* quartos Montessori
+* iluminação infantil
+* maternidade
+
+========================
+ESTRUTURA TÉCNICA
+=================
+
+Sugestão de stack:
+
+* Next.js
+* TypeScript
+* Tailwind
+* Prisma
+* PostgreSQL
+* Node.js
+* Mercado Pago SDK
+* Upload de imagens otimizado
+* Autenticação JWT
+
+Criar arquitetura organizada:
+
+* frontend
+* backend
+* API
+* banco
+* painel admin
+
+========================
+DESIGN
+======
+
+O design deve parecer uma mistura de:
+
+* Apple
+* Pinterest
+* decoração Montessori premium
+* marcas infantis sofisticadas
+
+Visual extremamente limpo, elegante e emocional.
+
+Evitar aparência genérica de ecommerce.
+
+========================
+OBJETIVO FINAL
+==============
+
+Quero um ecommerce profissional e premium para vender luminárias infantis personalizadas feitas em impressão 3D, com foco em:
+
+* experiência emocional
+* personalização
+* decoração infantil premium
+* facilidade de compra
+* visual sofisticado
+* escalabilidade futura
+
+O sistema deve estar pronto para produção e crescimento real da marca.
