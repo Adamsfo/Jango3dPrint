@@ -23,6 +23,7 @@ interface Product {
   principal_home: boolean;
   gallery?: string[];
   video_url?: string;
+  startingPrice?: number;
 }
 
 interface ProductVariant {
@@ -80,6 +81,37 @@ const mapVariant = (row: any): ProductVariant => ({
   image: typeof row?.image === "string" && row.image.length > 0 ? row.image : "",
   stock: typeof row?.stock === "number" && Number.isFinite(row.stock) ? row.stock : 0,
 });
+
+const withVariantStartingPrices = async (products: Product[]) => {
+  const ids = products.map((product) => product.id).filter(Boolean);
+  if (!ids.length) return products;
+
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select("product_id,price")
+    .in("product_id", ids);
+
+  if (error || !data) return products;
+
+  const minPriceByProduct = new Map<string, number>();
+
+  data.forEach((row: any) => {
+    const productId = typeof row?.product_id === "string" ? row.product_id : "";
+    const price = parseMoney(row?.price);
+
+    if (!productId || price <= 0) return;
+
+    const current = minPriceByProduct.get(productId);
+    if (current === undefined || price < current) {
+      minPriceByProduct.set(productId, price);
+    }
+  });
+
+  return products.map((product) => ({
+    ...product,
+    startingPrice: minPriceByProduct.get(product.id) ?? product.price,
+  }));
+};
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -139,7 +171,7 @@ function Index() {
       const products =
         !error && data ? data.map(mapProduct).filter((p) => Boolean(p.id && p.slug && p.name)) : [];
 
-      setFeaturedProducts(products);
+      setFeaturedProducts(await withVariantStartingPrices(products));
       setIsLoadingFeatured(false);
     }
 
@@ -317,7 +349,8 @@ function Hero({ product }: { product: Product }) {
       const res = await supabase
         .from("product_variants")
         .select("id,product_id,color,size,price,image,stock")
-        .eq("product_id", selected.id);
+        .eq("product_id", selected.id)
+        .order("price", { ascending: true });
 
       if (!isMounted) return;
 
@@ -329,7 +362,10 @@ function Hero({ product }: { product: Product }) {
         return;
       }
 
-      const mapped = res.data.map(mapVariant).filter((v) => Boolean(v.color && v.size));
+      const mapped = res.data
+        .map(mapVariant)
+        .filter((v) => Boolean(v.color && v.size))
+        .sort((a, b) => a.price - b.price);
 
       setVariants(mapped);
       const first = mapped[0];
@@ -741,7 +777,9 @@ function Featured({ products, isLoading }: { products: Product[]; isLoading: boo
                     <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                       A partir de
                     </p>
-                    <p className="mt-1 font-display text-lg">{formatBRL(product.price)}</p>
+                    <p className="mt-1 font-display text-lg">
+                      {formatBRL(product.startingPrice ?? product.price)}
+                    </p>
                   </div>
                 </div>
               </Link>
