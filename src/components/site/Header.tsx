@@ -1,9 +1,12 @@
 import { Link } from "@tanstack/react-router";
+import { ShoppingBag } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/hooks/useCart";
 import logo from "@/assets/logo.png";
 
 export function Header() {
   const { user, signOut } = useAuth();
+  const { itemCount } = useCart();
 
   const links = [
     { to: "/", label: "Início" },
@@ -43,6 +46,19 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <Link
+            to="/cart"
+            className="relative grid h-10 w-10 place-items-center rounded-full border border-border/80 bg-card/30 text-muted-foreground cinematic hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card/60 hover:text-[#ffbf5e]"
+            aria-label="Abrir carrinho"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            {itemCount > 0 ? (
+              <span className="absolute -right-1.5 -top-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground shadow-glow">
+                {itemCount}
+              </span>
+            ) : null}
+          </Link>
+
           {user ? (
             <>
               <div className="hidden text-sm text-muted-foreground md:block">

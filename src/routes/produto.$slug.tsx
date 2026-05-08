@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Check,
@@ -15,7 +15,9 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
+import { useCart } from "@/hooks/useCart";
 import { supabase } from "@/lib/supabase";
+import { buildWhatsappUrl } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/produto/$slug")({
   head: () => ({
@@ -43,12 +45,14 @@ type Product = {
   production_days: number;
   extra_personalization_days: number;
   customizable: boolean;
+  customizable_required: boolean;
   personalization_label: string;
   max_characters: number;
   customization_price: number;
 };
 
 type ProductVariant = {
+  id: string;
   product_id: string;
   color: string;
   size: string;
@@ -102,6 +106,7 @@ const mapProduct = (row: any): Product => ({
   production_days: parseNumber(row?.production_days, 3),
   extra_personalization_days: parseNumber(row?.extra_personalization_days, 0),
   customizable: Boolean(row?.customizable),
+  customizable_required: row?.customizable_required === true,
   personalization_label:
     typeof row?.personalization_label === "string" && row.personalization_label.length > 0
       ? row.personalization_label
@@ -113,6 +118,7 @@ const mapProduct = (row: any): Product => ({
 });
 
 const mapVariant = (row: any): ProductVariant => ({
+  id: typeof row?.id === "string" ? row.id : "",
   product_id: typeof row?.product_id === "string" ? row.product_id : "",
   color: typeof row?.color === "string" && row.color.length > 0 ? row.color : "Padrão",
   size: typeof row?.size === "string" && row.size.length > 0 ? row.size : "Único",
@@ -125,6 +131,8 @@ const mapVariant = (row: any): ProductVariant => ({
 
 function ProductPage() {
   const { slug } = Route.useParams();
+  const navigate = useNavigate();
+  const { addItem } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -132,6 +140,9 @@ function ProductPage() {
   const [selectedSize, setSelectedSize] = useState("");
   const [personalization, setPersonalization] = useState("");
   const [activeMediaId, setActiveMediaId] = useState("");
+  const [cartFeedback, setCartFeedback] = useState("");
+  const [cartError, setCartError] = useState("");
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -157,14 +168,14 @@ function ProductPage() {
       const mappedProduct = mapProduct(productData);
       const variantResult = await supabase
         .from("product_variants")
-        .select("product_id,color,size,image,gallery,video_url,price,stock")
+        .select("id,product_id,color,size,image,gallery,video_url,price,stock")
         .eq("product_id", mappedProduct.id)
         .order("price", { ascending: true });
 
       const fallbackVariantResult = variantResult.error
         ? await supabase
             .from("product_variants")
-            .select("product_id,color,size,image,price,stock")
+            .select("id,product_id,color,size,image,price,stock")
             .eq("product_id", mappedProduct.id)
             .order("price", { ascending: true })
         : null;
@@ -281,18 +292,92 @@ function ProductPage() {
   const finalPrice = basePrice + customizationPrice;
   const stock = selectedVariant?.stock ?? product?.stock ?? 0;
   const hasPersonalization = Boolean(product?.customizable && personalization.trim());
+  const requiresCustomization = product?.customizable_required === true;
   const totalProductionDays =
     (product?.production_days ?? 0) + (hasPersonalization ? product?.extra_personalization_days ?? 0 : 0);
-  const whatsappMessage = encodeURIComponent(
-    `Olá! Quero comprar ${product?.name ?? "uma luminária JANGO3D"}.\nCor: ${selectedColor || "Padrão"}\nTamanho: ${
-      selectedSize || "Único"
-    }\nPersonalização: ${personalization.trim() || "Sem personalização"}\nTotal: ${formatBRL(finalPrice)}`,
+  const whatsappUrl = buildWhatsappUrl(
+    `Olá! Vim pelo site da Jango3D e tenho interesse neste produto:
+
+${product?.name ?? ""}
+
+Variante:
+${selectedVariant?.color || selectedColor || ""} - ${selectedVariant?.size || selectedSize || ""}
+
+Personalização:
+${personalization.trim() || "Sem personalização"}
+
+Preço:
+${formatBRL(finalPrice)}`,
   );
 
   const selectColor = (color: string) => {
     setSelectedColor(color);
     const cheapestForColor = variants.filter((variant) => variant.color === color)[0];
     setSelectedSize(cheapestForColor?.size ?? "");
+  };
+
+  const buildCartItem = () => {
+    if (!product) return null;
+
+    if (requiresCustomization && !personalization.trim()) {
+      setCartError("Preencha o campo de personalização.");
+      return null;
+    }
+
+    if (stock <= 0) {
+      setCartError("Esta variante está indisponível no momento.");
+      return null;
+    }
+
+    const itemImage =
+      selectedVariant?.image ||
+      selectedVariant?.gallery[0] ||
+      product.image ||
+      activeMedia?.src ||
+      "";
+
+    setCartError("");
+
+    return {
+      product_id: product.id,
+      variant_id: selectedVariant?.id,
+      slug: product.slug,
+      name: product.name,
+      image: itemImage,
+      color: selectedColor || selectedVariant?.color || "Padrão",
+      size: selectedSize || selectedVariant?.size || "Único",
+      personalization,
+      base_price: basePrice,
+      customization_price: customizationPrice,
+      final_price: finalPrice,
+      quantity: 1,
+      production_days: totalProductionDays,
+      extra_personalization_days: hasPersonalization ? product.extra_personalization_days : 0,
+    };
+  };
+
+  const handleAddToCart = () => {
+    const item = buildCartItem();
+    if (!item) return;
+
+    addItem(item);
+
+    setCartFeedback("Adicionado ao carrinho");
+    window.setTimeout(() => setCartFeedback(""), 2200);
+  };
+
+  const handleBuyNow = () => {
+    const item = buildCartItem();
+    if (!item) return;
+
+    setIsBuyingNow(true);
+    addItem(item);
+    setCartFeedback("Produto adicionado ao carrinho");
+
+    window.setTimeout(() => {
+      void navigate({ to: "/cart" });
+      window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
+    }, 450);
   };
 
   if (isLoading) {
@@ -417,7 +502,12 @@ function ProductPage() {
 
                 {product.customizable ? (
                   <div>
-                    <Label>{product.personalization_label}</Label>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <Label>{product.personalization_label}</Label>
+                      <span className="rounded-full border border-border/70 bg-card/35 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                        {requiresCustomization ? "Personalização obrigatória" : "Personalização opcional"}
+                      </span>
+                    </div>
                     <input
                       value={personalization}
                       onChange={(event) =>
@@ -449,14 +539,32 @@ function ProductPage() {
               </div>
 
               <div className="mt-8 grid gap-3">
-                <button className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-4 text-sm font-medium text-primary-foreground shadow-glow cinematic hover:-translate-y-0.5 hover:bg-primary/90">
-                  <ShoppingBag className="h-4 w-4" /> Comprar agora
+                <button
+                  onClick={handleBuyNow}
+                  disabled={stock <= 0 || isBuyingNow}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-4 text-sm font-medium text-primary-foreground shadow-glow cinematic hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                >
+                  <ShoppingBag className="h-4 w-4" /> {isBuyingNow ? "Adicionando..." : "Comprar agora"}
                 </button>
-                <button className="inline-flex items-center justify-center gap-2 rounded-full border border-border/80 bg-card/35 px-6 py-4 text-sm font-medium cinematic hover:-translate-y-0.5 hover:bg-card/60">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={stock <= 0}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border/80 bg-card/35 px-6 py-4 text-sm font-medium cinematic hover:-translate-y-0.5 hover:bg-card/60 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                >
                   <PackageCheck className="h-4 w-4" /> Adicionar ao carrinho
                 </button>
+                {cartError ? (
+                  <p className="rounded-full border border-destructive/35 bg-destructive/10 px-4 py-2 text-center text-xs uppercase tracking-[0.18em] text-destructive">
+                    {cartError}
+                  </p>
+                ) : null}
+                {cartFeedback ? (
+                  <p className="rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-center text-xs uppercase tracking-[0.22em] text-primary">
+                    {cartFeedback}
+                  </p>
+                ) : null}
                 <a
-                  href={`https://wa.me/?text=${whatsappMessage}`}
+                  href={whatsappUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-6 py-4 text-sm font-medium text-primary cinematic hover:-translate-y-0.5 hover:bg-primary/15"

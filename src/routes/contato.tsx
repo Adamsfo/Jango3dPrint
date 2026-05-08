@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Instagram, Mail, MessageCircle } from "lucide-react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
+import { buildWhatsappUrl } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/contato")({
   head: () => ({
@@ -14,6 +15,10 @@ export const Route = createFileRoute("/contato")({
 });
 
 function Contato() {
+  const whatsappUrl = buildWhatsappUrl(
+    "Olá! Vim pelo site da Jango3D e gostaria de falar com vocês.",
+  );
+
   return (
     <div className="min-h-screen">
       <Header />
@@ -28,14 +33,20 @@ function Contato() {
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {[
             { Icon: Mail, t: "E-mail", d: "ola@jango3d.com.br" },
-            { Icon: MessageCircle, t: "WhatsApp", d: "(11) 9 9999-9999" },
+            { Icon: MessageCircle, t: "WhatsApp", d: "(65) 99247-7468", href: whatsappUrl },
             { Icon: Instagram, t: "Instagram", d: "@jango3d" },
           ].map((c) => (
-            <div key={c.t} className="rounded-3xl border border-border/60 bg-cream p-8">
+            <a
+              key={c.t}
+              href={c.href}
+              target={c.href ? "_blank" : undefined}
+              rel={c.href ? "noreferrer" : undefined}
+              className="rounded-3xl border border-border/60 bg-cream p-8 cinematic hover:-translate-y-0.5 hover:border-primary/35"
+            >
               <c.Icon className="h-5 w-5 text-primary" />
               <p className="mt-4 font-display text-xl">{c.t}</p>
               <p className="mt-1 text-sm text-muted-foreground">{c.d}</p>
-            </div>
+            </a>
           ))}
         </div>
 
