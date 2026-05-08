@@ -14,9 +14,11 @@ import { Route as PersonalizarRouteImport } from './routes/personalizar'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as ColecaoRouteImport } from './routes/colecao'
+import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProdutoSlugRouteImport } from './routes/produto.$slug'
+import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 
 const SobreRoute = SobreRouteImport.update({
   id: '/sobre',
@@ -43,6 +45,11 @@ const ColecaoRoute = ColecaoRouteImport.update({
   path: '/colecao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CartRoute = CartRouteImport.update({
   id: '/cart',
   path: '/cart',
@@ -58,36 +65,47 @@ const ProdutoSlugRoute = ProdutoSlugRouteImport.update({
   path: '/produto/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
+  id: '/success',
+  path: '/success',
+  getParentRoute: () => CheckoutRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cart': typeof CartRoute
+  '/checkout': typeof CheckoutRouteWithChildren
   '/colecao': typeof ColecaoRoute
   '/contato': typeof ContatoRoute
   '/login': typeof LoginRoute
   '/personalizar': typeof PersonalizarRoute
   '/sobre': typeof SobreRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cart': typeof CartRoute
+  '/checkout': typeof CheckoutRouteWithChildren
   '/colecao': typeof ColecaoRoute
   '/contato': typeof ContatoRoute
   '/login': typeof LoginRoute
   '/personalizar': typeof PersonalizarRoute
   '/sobre': typeof SobreRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cart': typeof CartRoute
+  '/checkout': typeof CheckoutRouteWithChildren
   '/colecao': typeof ColecaoRoute
   '/contato': typeof ContatoRoute
   '/login': typeof LoginRoute
   '/personalizar': typeof PersonalizarRoute
   '/sobre': typeof SobreRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
 export interface FileRouteTypes {
@@ -95,37 +113,44 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cart'
+    | '/checkout'
     | '/colecao'
     | '/contato'
     | '/login'
     | '/personalizar'
     | '/sobre'
+    | '/checkout/success'
     | '/produto/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/cart'
+    | '/checkout'
     | '/colecao'
     | '/contato'
     | '/login'
     | '/personalizar'
     | '/sobre'
+    | '/checkout/success'
     | '/produto/$slug'
   id:
     | '__root__'
     | '/'
     | '/cart'
+    | '/checkout'
     | '/colecao'
     | '/contato'
     | '/login'
     | '/personalizar'
     | '/sobre'
+    | '/checkout/success'
     | '/produto/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CartRoute: typeof CartRoute
+  CheckoutRoute: typeof CheckoutRouteWithChildren
   ColecaoRoute: typeof ColecaoRoute
   ContatoRoute: typeof ContatoRoute
   LoginRoute: typeof LoginRoute
@@ -171,6 +196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ColecaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cart': {
       id: '/cart'
       path: '/cart'
@@ -192,12 +224,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProdutoSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout/success': {
+      id: '/checkout/success'
+      path: '/success'
+      fullPath: '/checkout/success'
+      preLoaderRoute: typeof CheckoutSuccessRouteImport
+      parentRoute: typeof CheckoutRoute
+    }
   }
 }
+
+interface CheckoutRouteChildren {
+  CheckoutSuccessRoute: typeof CheckoutSuccessRoute
+}
+
+const CheckoutRouteChildren: CheckoutRouteChildren = {
+  CheckoutSuccessRoute: CheckoutSuccessRoute,
+}
+
+const CheckoutRouteWithChildren = CheckoutRoute._addFileChildren(
+  CheckoutRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CartRoute: CartRoute,
+  CheckoutRoute: CheckoutRouteWithChildren,
   ColecaoRoute: ColecaoRoute,
   ContatoRoute: ContatoRoute,
   LoginRoute: LoginRoute,

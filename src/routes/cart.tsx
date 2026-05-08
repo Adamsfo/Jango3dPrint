@@ -3,7 +3,6 @@ import { Minus, Plus, ShoppingBag, Sparkles, Trash2, WalletCards } from "lucide-
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 import { useCart, type CartItem } from "@/hooks/useCart";
-import { buildWhatsappUrl } from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -32,29 +31,6 @@ function CartPage() {
     personalizationTotal,
     averageProductionDays,
   } = useCart();
-
-  const checkoutWhatsappUrl = buildWhatsappUrl(
-    `Olá! Vim pelo site da Jango3D e quero finalizar este pedido:
-
-${items
-  .map(
-    (item) => `${item.name}
-Variante:
-${item.color} - ${item.size}
-
-Personalização:
-${item.personalization || "Sem personalização"}
-
-Preço:
-${formatBRL(item.final_price)}
-Quantidade:
-${item.quantity}`,
-  )
-  .join("\n\n---\n\n")}
-
-Total:
-${formatBRL(cartTotal)}`,
-  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -124,18 +100,16 @@ ${formatBRL(cartTotal)}`,
                   </div>
                 </div>
 
-                <a
-                  href={checkoutWhatsappUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                <Link
+                  to="/checkout"
                   className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-4 text-sm font-medium text-primary-foreground shadow-glow cinematic hover:-translate-y-0.5 hover:bg-primary/90"
                 >
                   <ShoppingBag className="h-4 w-4" />
-                  Preparar checkout
-                </a>
+                  Finalizar compra
+                </Link>
 
                 <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
-                  Estrutura pronta para Mercado Pago, Stripe, Pix e checkout dedicado.
+                  Pagamento seguro via Pix e cartão.
                 </p>
               </aside>
             </div>
