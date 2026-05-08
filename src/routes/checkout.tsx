@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CreditCard, MapPin, QrCode, ShieldCheck, ShoppingBag, Sparkles, UserRound } from "lucide-react";
+import { CreditCard, MapPin, QrCode, ShieldCheck, ShoppingBag, Sparkles, Truck, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/hooks/useCart";
 import { supabase } from "@/lib/supabase";
 import { buildWhatsappUrl } from "@/lib/whatsapp";
+import { calculateShipping, getDeliveryEstimate, type ShippingOption } from "@/services/shipping";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -36,8 +37,8 @@ type CustomerForm = {
   payment_method: "pix" | "card";
 };
 
-const SHIPPING = 19.9;
 const CHECKOUT_STORAGE_KEY = "jango3d_checkout_data";
+const FALLBACK_SHIPPING_PRICE = 19.9;
 
 const initialForm: CustomerForm = {
   customer_name: "",
@@ -56,6 +57,8 @@ const initialForm: CustomerForm = {
 
 const formatBRL = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const formatBusinessDays = (days: number) => `${days} ${days === 1 ? "dia útil" : "dias úteis"}`;
 
 const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
@@ -139,12 +142,21 @@ function CheckoutPage() {
   const [hasHydratedForm, setHasHydratedForm] = useState(false);
   const [lastFetchedCep, setLastFetchedCep] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof CustomerForm, string>>>({});
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+  const [selectedShippingId, setSelectedShippingId] = useState("");
+  const [isShippingLoading, setIsShippingLoading] = useState(false);
+  const [shippingError, setShippingError] = useState("");
 
-  const total = cartTotal + SHIPPING;
+  const selectedShipping =
+    shippingOptions.find((option) => option.id === selectedShippingId) ?? shippingOptions[0];
+  const shippingPrice = selectedShipping?.price ?? FALLBACK_SHIPPING_PRICE;
+  const total = cartTotal + shippingPrice;
   const productionDays = useMemo(
     () => Math.max(0, ...items.map((item) => item.production_days)),
     [items],
   );
+  const deliveryDays = selectedShipping?.delivery_days ?? 0;
+  const totalDeliveryDays = getDeliveryEstimate(productionDays, deliveryDays);
 
   const setField = (field: keyof CustomerForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -229,6 +241,36 @@ function CheckoutPage() {
     void fetchAddressByCep(form.cep);
   }, [form.cep, lastFetchedCep]);
 
+  useEffect(() => {
+    const cep = onlyDigits(form.cep);
+    if (cep.length !== 8 || !items.length) {
+      setShippingOptions([]);
+      setSelectedShippingId("");
+      return;
+    }
+
+    let isMounted = true;
+
+    async function run() {
+      setIsShippingLoading(true);
+      setShippingError("");
+
+      const result = await calculateShipping({ items, destinationCep: cep });
+
+      if (!isMounted) return;
+
+      setShippingOptions(result.options);
+      setSelectedShippingId(result.options[0]?.id ?? "");
+      setShippingError(result.message);
+      setIsShippingLoading(false);
+    }
+
+    void run();
+    return () => {
+      isMounted = false;
+    };
+  }, [form.cep, items]);
+
   const validate = () => {
     const phoneDigits = onlyDigits(form.phone);
     const cpfDigits = onlyDigits(form.cpf);
@@ -304,7 +346,7 @@ function CheckoutPage() {
         items: orderItems,
         subtotal,
         customization_total: personalizationTotal,
-        shipping: SHIPPING,
+        shipping: shippingPrice,
         total,
         payment_method: form.payment_method,
         payment_status: "pending",
@@ -312,6 +354,9 @@ function CheckoutPage() {
         address,
         production_days: productionDays,
         mercado_pago_status: "pending",
+        tracking_code: selectedShipping
+          ? `${selectedShipping.company} - ${selectedShipping.name}`
+          : null,
       })
       .select("id")
       .single();
@@ -338,7 +383,9 @@ ${items
   .join("\n")}
 
 Total: ${formatBRL(total)}
-Prazo produção: ${productionDays} dias úteis`,
+Frete: ${selectedShipping ? `${selectedShipping.company} ${selectedShipping.name} - ${formatBRL(selectedShipping.price)}` : "Fallback"}
+Prazo produção: ${productionDays} dias úteis
+Receba em até: ${totalDeliveryDays} dias úteis`,
     );
 
     window.open(whatsappUrl, "_blank", "noreferrer");
@@ -443,6 +490,54 @@ Prazo produção: ${productionDays} dias úteis`,
                 </div>
               </CheckoutSection>
 
+              <CheckoutSection icon={Truck} title="Frete">
+                {isShippingLoading ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">Calculando frete...</p>
+                    <div className="h-20 rounded-3xl shimmer" />
+                    <div className="h-20 rounded-3xl shimmer" />
+                  </div>
+                ) : shippingOptions.length ? (
+                  <div className="space-y-3">
+                    {shippingOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setSelectedShippingId(option.id)}
+                        className={`w-full rounded-3xl border p-4 text-left cinematic hover:-translate-y-0.5 ${
+                          selectedShippingId === option.id
+                            ? "border-primary/60 bg-primary/10 shadow-glow"
+                            : "border-border/70 bg-card/25 hover:border-primary/35"
+                        }`}
+                      >
+                        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+                          <div>
+                            <p className="font-medium">
+                              {option.company} {option.name}
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Entrega estimada: {formatBusinessDays(option.delivery_days)}
+                            </p>
+                          </div>
+                          <div className="text-left md:text-right">
+                            <p className="font-display text-xl text-primary">{formatBRL(option.price)}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                    {shippingError ? (
+                      <p className="rounded-2xl border border-primary/20 bg-primary/8 px-4 py-3 text-sm text-muted-foreground">
+                        {shippingError}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="rounded-3xl border border-border/70 bg-card/25 p-4 text-sm text-muted-foreground">
+                    Informe o CEP para calcular o frete automaticamente.
+                  </p>
+                )}
+              </CheckoutSection>
+
               <CheckoutSection icon={CreditCard} title="Pagamento">
                 <div className="grid gap-3 md:grid-cols-2">
                   <PaymentButton
@@ -491,8 +586,10 @@ Prazo produção: ${productionDays} dias úteis`,
               <div className="mt-7 space-y-3 border-t border-border/70 pt-5 text-sm">
                 <SummaryRow label="Subtotal" value={formatBRL(subtotal)} />
                 <SummaryRow label="Personalizações" value={formatBRL(personalizationTotal)} />
-                <SummaryRow label="Frete" value={formatBRL(SHIPPING)} />
-                <SummaryRow label="Prazo" value={`${productionDays} dias úteis`} />
+                <SummaryRow label="Frete" value={formatBRL(shippingPrice)} />
+                <SummaryRow label="Produção" value={formatBusinessDays(productionDays)} />
+                <SummaryRow label="Entrega" value={formatBusinessDays(deliveryDays)} />
+                <SummaryRow label="Receba em até" value={formatBusinessDays(totalDeliveryDays)} />
                 <div className="border-t border-border/70 pt-4">
                   <SummaryRow label="Total" value={formatBRL(total)} highlight />
                 </div>
