@@ -6,7 +6,11 @@ import logo from "@/assets/logo.png";
 
 export function Header() {
   const { user, signOut } = useAuth();
-  const { itemCount } = useCart();
+  const { itemCount, cartTotal } = useCart();
+  const formattedCartTotal = cartTotal.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 
   const links = [
     { to: "/", label: "Início" },
@@ -48,12 +52,18 @@ export function Header() {
         <div className="flex items-center gap-3">
           <Link
             to="/cart"
-            className="relative grid h-10 w-10 place-items-center rounded-full border border-border/80 bg-card/30 text-muted-foreground cinematic hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card/60 hover:text-[#ffbf5e]"
+            className="group relative inline-flex min-h-11 items-center gap-2 rounded-full border border-primary/25 bg-card/35 px-4 py-2 text-sm font-medium text-foreground shadow-[0_0_22px_rgba(255,190,80,.08)] backdrop-blur cinematic hover:-translate-y-0.5 hover:scale-[1.02] hover:border-primary/45 hover:bg-primary/10 hover:text-[#ffbf5e] hover:shadow-[0_0_10px_rgba(255,190,80,.28),0_0_24px_rgba(255,190,80,.16)]"
             aria-label="Abrir carrinho"
           >
-            <ShoppingBag className="h-4 w-4" />
+            <ShoppingBag className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
+            <span>Carrinho</span>
+            {cartTotal > 0 ? (
+              <span className="hidden text-xs text-muted-foreground transition-colors duration-300 group-hover:text-[#ffbf5e] lg:inline">
+                • {formattedCartTotal}
+              </span>
+            ) : null}
             {itemCount > 0 ? (
-              <span className="absolute -right-1.5 -top-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground shadow-glow">
+              <span className="ml-1 grid min-h-6 min-w-6 animate-pulse place-items-center rounded-full bg-primary px-2 text-xs font-semibold text-primary-foreground shadow-glow">
                 {itemCount}
               </span>
             ) : null}
