@@ -33,6 +33,8 @@ interface ProductVariant {
   size: string;
   price: number;
   image: string;
+  gallery?: string[];
+  video_url?: string;
   stock: number;
 }
 
@@ -79,6 +81,11 @@ const mapVariant = (row: any): ProductVariant => ({
   size: typeof row?.size === "string" ? row.size : "",
   price: parseMoney(row?.price),
   image: typeof row?.image === "string" && row.image.length > 0 ? row.image : "",
+  gallery: Array.isArray(row?.gallery)
+    ? row.gallery.filter((url: unknown): url is string => typeof url === "string" && url.length > 0)
+    : undefined,
+  video_url:
+    typeof row?.video_url === "string" && row.video_url.length > 0 ? row.video_url : undefined,
   stock: typeof row?.stock === "number" && Number.isFinite(row.stock) ? row.stock : 0,
 });
 
@@ -348,13 +355,23 @@ function Hero({ product }: { product: Product }) {
       setIsLoadingVariants(true);
       const res = await supabase
         .from("product_variants")
-        .select("id,product_id,color,size,price,image,stock")
+        .select("id,product_id,color,size,price,image,gallery,video_url,stock")
         .eq("product_id", selected.id)
         .order("price", { ascending: true });
 
+      const fallbackRes = res.error
+        ? await supabase
+            .from("product_variants")
+            .select("id,product_id,color,size,price,image,stock")
+            .eq("product_id", selected.id)
+            .order("price", { ascending: true })
+        : null;
+
       if (!isMounted) return;
 
-      if (res.error || !res.data) {
+      const variantRows = res.data ?? fallbackRes?.data;
+
+      if (!variantRows) {
         setVariants([]);
         setSelectedColor("");
         setSelectedSize("");
@@ -362,7 +379,7 @@ function Hero({ product }: { product: Product }) {
         return;
       }
 
-      const mapped = res.data
+      const mapped = variantRows
         .map(mapVariant)
         .filter((v) => Boolean(v.color && v.size))
         .sort((a, b) => a.price - b.price);
@@ -390,26 +407,24 @@ function Hero({ product }: { product: Product }) {
     variants[0];
   const variantImage = currentVariant?.image;
   const productImage = selected?.image ?? "";
-  const productGallery = selected?.gallery?.length
-    ? selected.gallery
-    : productImage
-      ? [productImage]
-      : [];
+  const variantGallery = currentVariant?.gallery?.length ? currentVariant.gallery : [];
   const galleryImages = Array.from(
-    new Set([...(variantImage ? [variantImage] : []), ...productGallery].filter(Boolean)),
+    new Set([...(variantGallery.length ? variantGallery : []), ...(variantImage ? [variantImage] : [])].filter(Boolean)),
   );
-  const mainImage = showVideo ? "" : selectedMedia || variantImage || productGallery[0] || "";
+  const fallbackImage = productImage || "";
+  const mainImage = showVideo ? "" : selectedMedia || galleryImages[0] || fallbackImage;
   const customizationPrice =
     selected?.customizable && customName.trim().length > 0 ? selected.customization_price : 0;
   const price = (currentVariant?.price ?? selected?.price ?? 0) + customizationPrice;
   const availability = currentVariant ? currentVariant.stock > 0 : (selected?.stock ?? 0) > 0;
-  const videoUrl = selected?.video_url;
+  const videoUrl = currentVariant?.video_url;
   const isDirectVideo = /\.(mp4|webm|ogg)(\?.*)?$/i.test(videoUrl ?? "");
 
   useEffect(() => {
-    setSelectedMedia(variantImage || productGallery[0] || "");
+    const nextMedia = currentVariant?.gallery?.[0] || currentVariant?.image || fallbackImage || "";
+    setSelectedMedia(nextMedia);
     setShowVideo(false);
-  }, [selected?.id, variantImage]);
+  }, [currentVariant?.id, fallbackImage]);
 
   return (
     <section className="relative overflow-hidden depth-section reveal" data-reveal>
