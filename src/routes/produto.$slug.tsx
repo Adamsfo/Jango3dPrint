@@ -23,7 +23,7 @@ export const Route = createFileRoute("/produto/$slug")({
       { title: "Produto - JANGO3D" },
       {
         name: "description",
-        content: "Configure sua luminaria personalizada JANGO3D com acabamento premium.",
+        content: "Configure sua luminária personalizada JANGO3D com acabamento premium.",
       },
     ],
   }),
@@ -38,11 +38,14 @@ type Product = {
   image: string;
   video_url?: string;
   category: string;
+  price: number;
+  stock: number;
   production_days: number;
   extra_personalization_days: number;
   customizable: boolean;
   personalization_label: string;
   max_characters: number;
+  customization_price: number;
 };
 
 type ProductVariant = {
@@ -50,6 +53,8 @@ type ProductVariant = {
   color: string;
   size: string;
   image: string;
+  gallery: string[];
+  video_url?: string;
   price: number;
   stock: number;
 };
@@ -78,6 +83,12 @@ const isDirectVideo = (url: string) => /\.(mp4|webm|ogg)(\?.*)?$/i.test(url);
 
 const unique = (items: string[]) => Array.from(new Set(items.filter(Boolean)));
 
+const parseGallery = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter((item): item is string => typeof item === "string" && item.length > 0);
+};
+
 const mapProduct = (row: any): Product => ({
   id: typeof row?.id === "string" ? row.id : "",
   slug: typeof row?.slug === "string" ? row.slug : "",
@@ -85,7 +96,9 @@ const mapProduct = (row: any): Product => ({
   description: typeof row?.description === "string" ? row.description : "",
   image: typeof row?.image === "string" ? row.image : "",
   video_url: typeof row?.video_url === "string" && row.video_url.length > 0 ? row.video_url : undefined,
-  category: typeof row?.category === "string" && row.category.length > 0 ? row.category : "Luminaria personalizada",
+  category: typeof row?.category === "string" && row.category.length > 0 ? row.category : "Luminária personalizada",
+  price: parseMoney(row?.price),
+  stock: parseNumber(row?.stock, 0),
   production_days: parseNumber(row?.production_days, 3),
   extra_personalization_days: parseNumber(row?.extra_personalization_days, 0),
   customizable: Boolean(row?.customizable),
@@ -94,15 +107,18 @@ const mapProduct = (row: any): Product => ({
       ? row.personalization_label
       : typeof row?.customization_label === "string" && row.customization_label.length > 0
         ? row.customization_label
-        : "Nome na luminaria",
+        : "Nome na luminária",
   max_characters: parseNumber(row?.max_characters ?? row?.customization_max_chars, 14),
+  customization_price: parseMoney(row?.customization_price),
 });
 
 const mapVariant = (row: any): ProductVariant => ({
   product_id: typeof row?.product_id === "string" ? row.product_id : "",
-  color: typeof row?.color === "string" && row.color.length > 0 ? row.color : "Padrao",
-  size: typeof row?.size === "string" && row.size.length > 0 ? row.size : "Unico",
+  color: typeof row?.color === "string" && row.color.length > 0 ? row.color : "Padrão",
+  size: typeof row?.size === "string" && row.size.length > 0 ? row.size : "Único",
   image: typeof row?.image === "string" ? row.image : "",
+  gallery: parseGallery(row?.gallery),
+  video_url: typeof row?.video_url === "string" && row.video_url.length > 0 ? row.video_url : undefined,
   price: parseMoney(row?.price),
   stock: parseNumber(row?.stock, 0),
 });
@@ -139,14 +155,23 @@ function ProductPage() {
       }
 
       const mappedProduct = mapProduct(productData);
-      const { data: variantData } = await supabase
+      const variantResult = await supabase
         .from("product_variants")
-        .select("product_id,color,size,image,price,stock")
+        .select("product_id,color,size,image,gallery,video_url,price,stock")
         .eq("product_id", mappedProduct.id)
         .order("price", { ascending: true });
 
+      const fallbackVariantResult = variantResult.error
+        ? await supabase
+            .from("product_variants")
+            .select("product_id,color,size,image,price,stock")
+            .eq("product_id", mappedProduct.id)
+            .order("price", { ascending: true })
+        : null;
+
       if (!isMounted) return;
 
+      const variantData = variantResult.data ?? fallbackVariantResult?.data ?? [];
       const mappedVariants =
         variantData
           ?.map(mapVariant)
@@ -158,7 +183,7 @@ function ProductPage() {
       setVariants(mappedVariants);
       setSelectedColor(cheapestVariant?.color ?? "");
       setSelectedSize(cheapestVariant?.size ?? "");
-      setActiveMediaId(mappedProduct.image ? "product-image" : mappedProduct.video_url ? "product-video" : "");
+      setActiveMediaId("");
       setIsLoading(false);
     }
 
@@ -195,50 +220,80 @@ function ProductPage() {
     );
   }, [selectedColor, selectedSize, variants]);
 
-  useEffect(() => {
-    if (selectedVariant?.image) {
-      setActiveMediaId(`variant-${selectedVariant.color}-${selectedVariant.size}`);
-    }
-  }, [selectedVariant?.color, selectedVariant?.image, selectedVariant?.size]);
-
   const mediaItems = useMemo<MediaItem[]>(() => {
     if (!product) return [];
 
     const media: MediaItem[] = [];
+    const variantKey = selectedVariant
+      ? `${selectedVariant.color}-${selectedVariant.size}`
+      : "variant";
 
-    if (product.image) {
-      media.push({ id: "product-image", type: "image", src: product.image, label: "Imagem principal" });
-    }
-
-    if (product.video_url) {
-      media.push({ id: "product-video", type: "video", src: product.video_url, label: "Video" });
-    }
-
-    variants.forEach((variant) => {
-      if (!variant.image || media.some((item) => item.src === variant.image)) return;
-
+    selectedVariant?.gallery.forEach((src, index) => {
+      if (media.some((item) => item.src === src)) return;
       media.push({
-        id: `variant-${variant.color}-${variant.size}`,
+        id: `${variantKey}-gallery-${index}`,
         type: "image",
-        src: variant.image,
-        label: `${variant.color} - ${variant.size}`,
+        src,
+        label: `${selectedVariant.color} - ${selectedVariant.size} - imagem ${index + 1}`,
       });
     });
 
+    if (selectedVariant?.image && !media.some((item) => item.src === selectedVariant.image)) {
+      media.push({
+        id: `${variantKey}-image`,
+        type: "image",
+        src: selectedVariant.image,
+        label: `${selectedVariant.color} - ${selectedVariant.size}`,
+      });
+    }
+
+    if (selectedVariant?.video_url) {
+      media.push({
+        id: `${variantKey}-video`,
+        type: "video",
+        src: selectedVariant.video_url,
+        label: `${selectedVariant.color} - ${selectedVariant.size} - vídeo`,
+      });
+    }
+
+    if (!media.length && product.image) {
+      media.push({ id: "product-image-fallback", type: "image", src: product.image, label: "Imagem principal" });
+    }
+
     return media;
-  }, [product, variants]);
+  }, [product, selectedVariant]);
+
+  useEffect(() => {
+    if (!mediaItems.length) {
+      setActiveMediaId("");
+      return;
+    }
+
+    setActiveMediaId(mediaItems[0].id);
+  }, [mediaItems]);
 
   const activeMedia = mediaItems.find((item) => item.id === activeMediaId) ?? mediaItems[0];
-  const price = selectedVariant?.price ?? 0;
-  const stock = selectedVariant?.stock ?? 0;
+  const basePrice = selectedVariant?.price ?? product?.price ?? 0;
+  const customizationPrice =
+    product?.customizable && personalization.trim().length > 0
+      ? Number(product.customization_price || 0)
+      : 0;
+  const finalPrice = basePrice + customizationPrice;
+  const stock = selectedVariant?.stock ?? product?.stock ?? 0;
   const hasPersonalization = Boolean(product?.customizable && personalization.trim());
   const totalProductionDays =
     (product?.production_days ?? 0) + (hasPersonalization ? product?.extra_personalization_days ?? 0 : 0);
   const whatsappMessage = encodeURIComponent(
-    `Ola! Quero comprar ${product?.name ?? "uma luminaria JANGO3D"}.\nCor: ${selectedColor || "Padrao"}\nTamanho: ${
-      selectedSize || "Unico"
-    }\nPersonalizacao: ${personalization.trim() || "Sem personalizacao"}`,
+    `Olá! Quero comprar ${product?.name ?? "uma luminária JANGO3D"}.\nCor: ${selectedColor || "Padrão"}\nTamanho: ${
+      selectedSize || "Único"
+    }\nPersonalização: ${personalization.trim() || "Sem personalização"}\nTotal: ${formatBRL(finalPrice)}`,
   );
+
+  const selectColor = (color: string) => {
+    setSelectedColor(color);
+    const cheapestForColor = variants.filter((variant) => variant.color === color)[0];
+    setSelectedSize(cheapestForColor?.size ?? "");
+  };
 
   if (isLoading) {
     return (
@@ -256,13 +311,13 @@ function ProductPage() {
         <Header />
         <section className="mx-auto grid min-h-[60vh] max-w-7xl place-items-center px-6 py-24 text-center">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Produto indisponivel</p>
-            <h1 className="mt-4 font-display text-4xl">Produto nao encontrado.</h1>
+            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Produto indisponível</p>
+            <h1 className="mt-4 font-display text-4xl">Produto não encontrado.</h1>
             <Link
               to="/colecao"
               className="mt-8 inline-flex rounded-full border border-border/70 px-6 py-3 text-sm text-muted-foreground cinematic hover:-translate-y-0.5 hover:text-foreground"
             >
-              Voltar para colecao
+              Voltar para coleção
             </Link>
           </div>
         </section>
@@ -281,7 +336,7 @@ function ProductPage() {
             to="/colecao"
             className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-muted-foreground cinematic hover:-translate-y-0.5 hover:text-[#ffbf5e]"
           >
-            <ChevronLeft className="h-3.5 w-3.5" /> Colecao
+            <ChevronLeft className="h-3.5 w-3.5" /> Coleção
           </Link>
 
           <div className="mt-8 grid gap-10 lg:grid-cols-[1.08fr_.92fr] lg:items-start">
@@ -304,14 +359,30 @@ function ProductPage() {
 
               <div className="mt-8 grid gap-4 rounded-3xl border border-border/70 bg-background/35 p-5 backdrop-blur">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Preco</p>
-                  <p className="mt-1 font-display text-4xl text-foreground">{formatBRL(price)}</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Preço</p>
+                  <p className="mt-1 font-display text-4xl text-foreground">{formatBRL(finalPrice)}</p>
+                  {customizationPrice > 0 ? (
+                    <div className="mt-4 max-w-sm rounded-2xl border border-border/60 bg-card/25 p-4 text-sm">
+                      <div className="flex items-center justify-between gap-4 text-muted-foreground">
+                        <span>Produto</span>
+                        <span>{formatBRL(basePrice)}</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-4 text-primary">
+                        <span>+ Personalização</span>
+                        <span>{formatBRL(customizationPrice)}</span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-4 border-t border-border/60 pt-3 text-foreground">
+                        <span>Total</span>
+                        <span className="font-medium">{formatBRL(finalPrice)}</span>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap gap-3 text-sm">
                   <Badge tone={stock > 0 ? "success" : "muted"}>
-                    {stock > 0 ? `${stock} em estoque` : "Indisponivel no momento"}
+                    {stock > 0 ? `${stock} em estoque` : "Indisponível no momento"}
                   </Badge>
-                  <Badge>Producao: {totalProductionDays} dias uteis</Badge>
+                  <Badge>Produção: {totalProductionDays} dias úteis</Badge>
                 </div>
               </div>
 
@@ -322,7 +393,7 @@ function ProductPage() {
                       <ChoiceButton
                         key={color}
                         active={selectedColor === color}
-                        onClick={() => setSelectedColor(color)}
+                        onClick={() => selectColor(color)}
                       >
                         {color}
                       </ChoiceButton>
@@ -357,7 +428,7 @@ function ProductPage() {
                       className="mt-3 w-full rounded-full border border-border/80 bg-background/55 px-5 py-3.5 text-sm outline-none transition-all duration-300 placeholder:text-muted-foreground/65 focus:border-primary/70 focus:shadow-[0_0_28px_rgba(255,190,80,.12)]"
                     />
                     <div className="mt-2 flex items-center justify-between gap-4 text-xs text-muted-foreground">
-                      <span>Maximo de {product.max_characters} caracteres</span>
+                      <span>Máximo de {product.max_characters} caracteres</span>
                       <span>{personalization.length}/{product.max_characters} caracteres</span>
                     </div>
                   </div>
@@ -365,13 +436,13 @@ function ProductPage() {
 
                 <div className="rounded-3xl border border-primary/20 bg-primary/8 p-5">
                   <p className="text-xs uppercase tracking-[0.24em] text-primary/85">
-                    Producao estimada
+                    Produção estimada
                   </p>
-                  <p className="mt-2 font-display text-2xl">{totalProductionDays} dias uteis</p>
+                  <p className="mt-2 font-display text-2xl">{totalProductionDays} dias úteis</p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Inclui producao base de {product.production_days} dias
+                    Inclui produção base de {product.production_days} dias
                     {hasPersonalization
-                      ? ` + ${product.extra_personalization_days} dias para personalizacao.`
+                      ? ` + ${product.extra_personalization_days} dias para personalização.`
                       : "."}
                   </p>
                 </div>
@@ -396,7 +467,7 @@ function ProductPage() {
 
               <ul className="mt-7 grid gap-3 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-primary" /> Configuracao feita com variantes reais do produto
+                  <Check className="h-4 w-4 text-primary" /> Configuração feita com variantes reais do produto
                 </li>
                 <li className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-primary" /> Envio rastreado para todo o Brasil
@@ -416,7 +487,7 @@ function ProductPage() {
         <div className="mx-auto flex max-w-md items-center justify-between gap-4">
           <div>
             <p className="text-xs text-muted-foreground">Total</p>
-            <p className="font-display text-xl">{formatBRL(price)}</p>
+            <p className="font-display text-xl">{formatBRL(finalPrice)}</p>
           </div>
           <button className="rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground shadow-glow">
             Comprar
@@ -510,7 +581,7 @@ function ProductGallery({
           <iframe
             key={fallback.src}
             src={fallback.src}
-            title={`${productName} em video`}
+            title={`${productName} em vídeo`}
             className="aspect-square w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
@@ -559,12 +630,12 @@ function ProductInfoSections() {
     {
       icon: Sparkles,
       title: "Detalhes do produto",
-      text: "Peca decorativa criada para unir presenca visual, luz acolhedora e personalizacao elegante.",
+      text: "Peça decorativa criada para unir presença visual, luz acolhedora e personalização elegante.",
     },
     {
       icon: HeartHandshake,
-      title: "Producao artesanal",
-      text: "Cada luminaria passa por impressao 3D precisa, acabamento manual e revisao antes do envio.",
+      title: "Produção artesanal",
+      text: "Cada luminária passa por impressão 3D precisa, acabamento manual e revisão antes do envio.",
     },
     {
       icon: ShieldCheck,
@@ -573,18 +644,18 @@ function ProductInfoSections() {
     },
     {
       icon: Wand2,
-      title: "Iluminacao LED",
-      text: "Luz suave para criar atmosfera, destacar a peca e transformar o ambiente com conforto.",
+      title: "Iluminação LED",
+      text: "Luz suave para criar atmosfera, destacar a peça e transformar o ambiente com conforto.",
     },
     {
       icon: PackageCheck,
       title: "Cuidados",
-      text: "Limpe com pano seco e macio. Evite exposicao prolongada ao sol, agua e calor excessivo.",
+      text: "Limpe com pano seco e macio. Evite exposição prolongada ao sol, água e calor excessivo.",
     },
     {
       icon: MessageCircle,
       title: "FAQ",
-      text: "Tem duvidas sobre personalizacao, prazo ou presente? Fale conosco pelo WhatsApp antes da compra.",
+      text: "Tem dúvidas sobre personalização, prazo ou presente? Fale conosco pelo WhatsApp antes da compra.",
     },
   ];
 
