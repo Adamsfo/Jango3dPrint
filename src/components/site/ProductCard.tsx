@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { formatBRL } from "@/lib/products";
+import { formatBRL } from "@/lib/format-currency";
 
 export type ProductCardProduct = {
   slug: string;

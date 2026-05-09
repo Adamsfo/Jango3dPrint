@@ -19,6 +19,8 @@ import { Route as CartRouteImport } from './routes/cart'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProdutoSlugRouteImport } from './routes/produto.$slug'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
+import { Route as CheckoutProcessingRouteImport } from './routes/checkout.processing'
+import { Route as CheckoutPixRouteImport } from './routes/checkout.pix'
 
 const SobreRoute = SobreRouteImport.update({
   id: '/sobre',
@@ -70,6 +72,16 @@ const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
   path: '/success',
   getParentRoute: () => CheckoutRoute,
 } as any)
+const CheckoutProcessingRoute = CheckoutProcessingRouteImport.update({
+  id: '/processing',
+  path: '/processing',
+  getParentRoute: () => CheckoutRoute,
+} as any)
+const CheckoutPixRoute = CheckoutPixRouteImport.update({
+  id: '/pix',
+  path: '/pix',
+  getParentRoute: () => CheckoutRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,6 +92,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/personalizar': typeof PersonalizarRoute
   '/sobre': typeof SobreRoute
+  '/checkout/pix': typeof CheckoutPixRoute
+  '/checkout/processing': typeof CheckoutProcessingRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
@@ -92,6 +106,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/personalizar': typeof PersonalizarRoute
   '/sobre': typeof SobreRoute
+  '/checkout/pix': typeof CheckoutPixRoute
+  '/checkout/processing': typeof CheckoutProcessingRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
@@ -105,6 +121,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/personalizar': typeof PersonalizarRoute
   '/sobre': typeof SobreRoute
+  '/checkout/pix': typeof CheckoutPixRoute
+  '/checkout/processing': typeof CheckoutProcessingRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
@@ -119,6 +137,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/personalizar'
     | '/sobre'
+    | '/checkout/pix'
+    | '/checkout/processing'
     | '/checkout/success'
     | '/produto/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -131,6 +151,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/personalizar'
     | '/sobre'
+    | '/checkout/pix'
+    | '/checkout/processing'
     | '/checkout/success'
     | '/produto/$slug'
   id:
@@ -143,6 +165,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/personalizar'
     | '/sobre'
+    | '/checkout/pix'
+    | '/checkout/processing'
     | '/checkout/success'
     | '/produto/$slug'
   fileRoutesById: FileRoutesById
@@ -231,14 +255,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutSuccessRouteImport
       parentRoute: typeof CheckoutRoute
     }
+    '/checkout/processing': {
+      id: '/checkout/processing'
+      path: '/processing'
+      fullPath: '/checkout/processing'
+      preLoaderRoute: typeof CheckoutProcessingRouteImport
+      parentRoute: typeof CheckoutRoute
+    }
+    '/checkout/pix': {
+      id: '/checkout/pix'
+      path: '/pix'
+      fullPath: '/checkout/pix'
+      preLoaderRoute: typeof CheckoutPixRouteImport
+      parentRoute: typeof CheckoutRoute
+    }
   }
 }
 
 interface CheckoutRouteChildren {
+  CheckoutPixRoute: typeof CheckoutPixRoute
+  CheckoutProcessingRoute: typeof CheckoutProcessingRoute
   CheckoutSuccessRoute: typeof CheckoutSuccessRoute
 }
 
 const CheckoutRouteChildren: CheckoutRouteChildren = {
+  CheckoutPixRoute: CheckoutPixRoute,
+  CheckoutProcessingRoute: CheckoutProcessingRoute,
   CheckoutSuccessRoute: CheckoutSuccessRoute,
 }
 
